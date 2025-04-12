@@ -1,0 +1,16 @@
+{
+    "harmful_trackers": [
+      "doubleclick.net",
+      "google-analytics.com",
+      "adroll.com",
+      "taboola.com",
+      "outbrain.com",
+      "criteo.com",
+      "ads.yahoo.com",
+      "scorecardresearch.com",
+      "quantserve.com",
+      "adsrvr.org"
+    ],
+    "benign_trackers": ["examplebenigntracker.com", "anotherbenigntracker.com"]
+}
+  

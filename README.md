@@ -7,6 +7,8 @@ it has things like
 - tracker blocking (i think)
 - just works
 
+### if download history and browsing history doesnt work create files "downlods.json" and "history.json" in the main directory
+
 # how to compile + run
 
 ```sh

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="darkmode.css" />
+    <title>Brave Search</title>
+</head>
+<body>
+    <header>
+        <h1>Welcome</h1>
+    </header>
+    <main>
+        <form id="searchForm">
+            <input type="text" id="searchBox" placeholder="Search with Brave..." />
+            <button type="submit">Search</button>
+        </form>
+    </main>
+    <footer>
+        <p>Secure Search. Simple Design.</p>
+    </footer>
+    <script>
+        document.getElementById("searchForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const query = encodeURIComponent(document.getElementById("searchBox").value);
+            window.location.href = "https://search.brave.com/search?q=" + query;
+        });
+    </script>
+</body>
+</html>
