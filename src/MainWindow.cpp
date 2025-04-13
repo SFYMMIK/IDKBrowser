@@ -18,11 +18,29 @@
 #include <QDir>
 #include <QDateTime>
 #include <QFileInfo>
+#include <QPalette>
+#include <QApplication>
 #include <fstream>
 #include <nlohmann/json.hpp>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) {
+    qApp->setStyle("Fusion");
+    QPalette darkPalette;
+    darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::WindowText, Qt::white);
+    darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+    darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::ToolTipBase, Qt::black);
+    darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+    darkPalette.setColor(QPalette::Text, Qt::white);
+    darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::ButtonText, Qt::white);
+    darkPalette.setColor(QPalette::BrightText, Qt::red);
+    darkPalette.setColor(QPalette::Highlight, QColor(142, 45, 197).lighter());
+    darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+    qApp->setPalette(darkPalette);
+
     QWidget *central = new QWidget;
     QVBoxLayout *layout = new QVBoxLayout;
 
@@ -37,6 +55,8 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *viewHistoryAction = new QAction("📜 View History", this);
 
     urlBar = new QLineEdit;
+    urlBar->setPlaceholderText("Search with Brave Search");
+    urlBar->setStyleSheet("QLineEdit::placeholder { color: gray; }");
 
     navBar->addAction(backAction);
     navBar->addAction(forwardAction);
@@ -104,22 +124,37 @@ void MainWindow::onLoadPage() {
 
 void MainWindow::goHome() {
     if (!currentWebView()) return;
+
     QString path = QCoreApplication::applicationDirPath() + "/src/UI/homepage.html";
     currentWebView()->load(QUrl::fromLocalFile(path));
+    urlBar->clear();
+    urlBar->setPlaceholderText("Search with Brave Search");
 }
 
 void MainWindow::addNewTab() {
     auto *view = new QWebEngineView;
     view->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
-    view->page()->settings()->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
+    view->settings()->setAttribute(QWebEngineSettings::WebAttribute::ShowScrollBars, false);
+    view->settings()->setAttribute(QWebEngineSettings::WebAttribute::DnsPrefetchEnabled, true);
+    view->settings()->setAttribute(QWebEngineSettings::WebAttribute::LocalContentCanAccessRemoteUrls, true);
+
+    QWebEngineProfile *profile = view->page()->profile();
+    profile->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
+    profile->setHttpUserAgent(profile->httpUserAgent() + " SolarBrowser/1.0 (DarkMode)");
 
     connect(view, &QWebEngineView::urlChanged, this, [=](const QUrl &url) {
         if (view == currentWebView()) {
-            urlBar->setText(url.toString());
+            if (url.toString().startsWith("file://") && url.toString().contains("homepage.html")) {
+                urlBar->clear();
+                urlBar->setPlaceholderText("Search with Brave Search");
+            } else {
+                urlBar->setText(url.toString());
+                urlBar->setPlaceholderText("");
+            }
         }
     });
 
-    connect(view->page()->profile(), &QWebEngineProfile::downloadRequested, this, [=](QWebEngineDownloadRequest *download) {
+    connect(profile, &QWebEngineProfile::downloadRequested, this, [=](QWebEngineDownloadRequest *download) {
         QString dir = QFileDialog::getExistingDirectory(this, "Select Download Folder");
         if (!dir.isEmpty()) {
             QString fileName = download->downloadFileName();
@@ -187,17 +222,26 @@ void MainWindow::tabChanged(int index) {
         addNewTab();
     } else if (index >= 0) {
         QWebEngineView* view = qobject_cast<QWebEngineView*>(tabWidget->widget(index));
-        if (view) urlBar->setText(view->url().toString());
-        else urlBar->clear();
+        if (view) {
+            QString urlStr = view->url().toString();
+            if (urlStr.startsWith("file://") && urlStr.contains("homepage.html")) {
+                urlBar->clear();
+                urlBar->setPlaceholderText("Search with Brave Search");
+            } else {
+                urlBar->setText(urlStr);
+                urlBar->setPlaceholderText("");
+            }
+        } else {
+            urlBar->clear();
+            urlBar->setPlaceholderText("Search with Brave Search");
+        }
     }
 }
 
 void MainWindow::logHistory(const QString &url) {
     nlohmann::json db;
     std::ifstream in("history.json");
-    if (in.is_open()) {
-        try { in >> db; } catch (...) { db = nlohmann::json::array(); }
-    }
+    if (in.is_open()) in >> db;
 
     db.push_back({{"url", url.toStdString()}, {"timestamp", QDateTime::currentSecsSinceEpoch()}});
 
@@ -219,9 +263,7 @@ void MainWindow::clearBrowsingHistory() {
 void MainWindow::logDownload(const QString &path) {
     nlohmann::json db;
     std::ifstream in("downloads.json");
-    if (in.is_open()) {
-        try { in >> db; } catch (...) { db = nlohmann::json::array(); }
-    }
+    if (in.is_open()) in >> db;
 
     db.push_back({{"file", path.toStdString()}, {"timestamp", QDateTime::currentSecsSinceEpoch()}});
 
@@ -238,7 +280,7 @@ void MainWindow::showDownloadHistory() {
     nlohmann::json db;
     std::ifstream in("downloads.json");
     if (!in.is_open()) return;
-    try { in >> db; } catch (...) { return; }
+    in >> db;
 
     QStringList options;
     for (const auto &item : db) {
@@ -257,7 +299,7 @@ void MainWindow::showBrowsingHistory() {
     nlohmann::json db;
     std::ifstream in("history.json");
     if (!in.is_open()) return;
-    try { in >> db; } catch (...) { return; }
+    in >> db;
 
     QStringList entries;
     for (const auto &item : db) {

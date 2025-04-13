@@ -1,30 +1,59 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="darkmode.css" />
-    <title>Brave Search</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IDK SEARCH SOMETHING</title>
+  <style>
+    body {
+      background-color: #121212;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #ffffff;
+      margin-bottom: 30px;
+    }
+    form {
+      width: 100%;
+      max-width: 600px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 1.2rem;
+      border: 1px solid #444;
+      border-radius: 30px;
+      box-sizing: border-box;
+      outline: none;
+      background-color: #1e1e1e;
+      color: #fff;
+    }
+    input[type="text"]:focus {
+      border-color: #888;
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>Welcome</h1>
-    </header>
-    <main>
-        <form id="searchForm">
-            <input type="text" id="searchBox" placeholder="Search with Brave..." />
-            <button type="submit">Search</button>
-        </form>
-    </main>
-    <footer>
-        <p>Secure Search. Simple Design.</p>
-    </footer>
-    <script>
-        document.getElementById("searchForm").addEventListener("submit", function (e) {
-            e.preventDefault();
-            const query = encodeURIComponent(document.getElementById("searchBox").value);
-            window.location.href = "https://search.brave.com/search?q=" + query;
-        });
-    </script>
+  <h1>IDK SEARCH SOMETHING</h1>
+  <form onsubmit="search(event)">
+    <input type="text" id="searchBox" placeholder="Type something..." autocomplete="off">
+  </form>
+
+  <script>
+    function search(e) {
+      e.preventDefault();
+      const query = document.getElementById('searchBox').value.trim();
+      if (query) {
+        window.location.href = 'https://search.brave.com/search?q=' + encodeURIComponent(query);
+      }
+    }
+  </script>
 </body>
 </html>
