@@ -17,10 +17,14 @@ public:
 private slots:
     void onLoadPage();
     void goHome();
-    void addNewTab();
     void addPlusTab();
+    void addNewTab();
     void closeCurrentTab(int index);
     void handleCloseRequest(int index);
+    void goBack();
+    void goForward();
+    void refreshPage();
+    void tabChanged(int index);
     void clearBrowsingHistory();
     void showDownloadHistory();
     void showBrowsingHistory();

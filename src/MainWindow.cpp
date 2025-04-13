@@ -6,6 +6,7 @@
 #include <QWebEngineSettings>
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
+#include <QWebEngineDownloadRequest>
 #include <QCoreApplication>
 #include <QLabel>
 #include <QPushButton>
@@ -47,15 +48,9 @@ MainWindow::MainWindow(QWidget *parent)
     navBar->addAction(downloadListAction);
     navBar->addAction(viewHistoryAction);
 
-    connect(backAction, &QAction::triggered, [=]() {
-        if (currentWebView()) currentWebView()->back();
-    });
-    connect(forwardAction, &QAction::triggered, [=]() {
-        if (currentWebView()) currentWebView()->forward();
-    });
-    connect(refreshAction, &QAction::triggered, [=]() {
-        if (currentWebView()) currentWebView()->reload();
-    });
+    connect(backAction, &QAction::triggered, this, &MainWindow::goBack);
+    connect(forwardAction, &QAction::triggered, this, &MainWindow::goForward);
+    connect(refreshAction, &QAction::triggered, this, &MainWindow::refreshPage);
     connect(homeAction, &QAction::triggered, this, &MainWindow::goHome);
     connect(goAction, &QAction::triggered, this, &MainWindow::onLoadPage);
     connect(urlBar, &QLineEdit::returnPressed, this, &MainWindow::onLoadPage);
@@ -71,15 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
     tabWidget->setDocumentMode(true);
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::handleCloseRequest);
-    connect(tabWidget, &QTabWidget::currentChanged, [=](int index) {
-        if (index >= 0 && tabWidget->tabText(index) == "+") {
-            addNewTab();
-        } else if (index >= 0) {
-            QWebEngineView* view = qobject_cast<QWebEngineView*>(tabWidget->widget(index));
-            if (view) urlBar->setText(view->url().toString());
-            else urlBar->clear();
-        }
-    });
+    connect(tabWidget, &QTabWidget::currentChanged, this, &MainWindow::tabChanged);
 
     layout->addWidget(tabWidget);
     central->setLayout(layout);
@@ -105,7 +92,7 @@ void MainWindow::onLoadPage() {
     QUrl url;
     if (input.startsWith("http://") || input.startsWith("https://")) {
         url = QUrl(input);
-    } else if (QRegularExpression(R"(([^\s]+\.[^\s.]+))").match(input).hasMatch()) {
+    } else if (QRegularExpression(R"(([\w-]+\.[\w.-]+))").match(input).hasMatch()) {
         url = QUrl("https://" + input);
     } else {
         url = QUrl("https://search.brave.com/search?q=" + QUrl::toPercentEncoding(input));
@@ -126,13 +113,13 @@ void MainWindow::addNewTab() {
     view->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
     view->page()->settings()->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
 
-    connect(view, &QWebEngineView::urlChanged, [=](const QUrl &url) {
+    connect(view, &QWebEngineView::urlChanged, this, [=](const QUrl &url) {
         if (view == currentWebView()) {
             urlBar->setText(url.toString());
         }
     });
 
-    connect(view->page()->profile(), &QWebEngineProfile::downloadRequested, this, [=](QWebEngineDownloadItem *download) {
+    connect(view->page()->profile(), &QWebEngineProfile::downloadRequested, this, [=](QWebEngineDownloadRequest *download) {
         QString dir = QFileDialog::getExistingDirectory(this, "Select Download Folder");
         if (!dir.isEmpty()) {
             QString fileName = download->downloadFileName();
@@ -153,7 +140,6 @@ void MainWindow::addNewTab() {
 
     tabWidget->insertTab(insertIndex, view, "New Tab");
     tabWidget->setCurrentIndex(insertIndex);
-    tabWidget->tabBar()->setTabsClosable(true);
     goHome();
 }
 
@@ -161,7 +147,6 @@ void MainWindow::addPlusTab() {
     QWidget *plusWidget = new QWidget;
     tabWidget->addTab(plusWidget, "+");
     tabWidget->tabBar()->setTabButton(tabWidget->count() - 1, QTabBar::RightSide, nullptr);
-    tabWidget->tabBar()->setTabsClosable(true);
 }
 
 void MainWindow::closeCurrentTab(int index) {
@@ -185,10 +170,34 @@ void MainWindow::handleCloseRequest(int index) {
     }
 }
 
+void MainWindow::goBack() {
+    if (currentWebView()) currentWebView()->back();
+}
+
+void MainWindow::goForward() {
+    if (currentWebView()) currentWebView()->forward();
+}
+
+void MainWindow::refreshPage() {
+    if (currentWebView()) currentWebView()->reload();
+}
+
+void MainWindow::tabChanged(int index) {
+    if (index >= 0 && tabWidget->tabText(index) == "+") {
+        addNewTab();
+    } else if (index >= 0) {
+        QWebEngineView* view = qobject_cast<QWebEngineView*>(tabWidget->widget(index));
+        if (view) urlBar->setText(view->url().toString());
+        else urlBar->clear();
+    }
+}
+
 void MainWindow::logHistory(const QString &url) {
     nlohmann::json db;
     std::ifstream in("history.json");
-    if (in.is_open()) in >> db;
+    if (in.is_open()) {
+        try { in >> db; } catch (...) { db = nlohmann::json::array(); }
+    }
 
     db.push_back({{"url", url.toStdString()}, {"timestamp", QDateTime::currentSecsSinceEpoch()}});
 
@@ -210,7 +219,9 @@ void MainWindow::clearBrowsingHistory() {
 void MainWindow::logDownload(const QString &path) {
     nlohmann::json db;
     std::ifstream in("downloads.json");
-    if (in.is_open()) in >> db;
+    if (in.is_open()) {
+        try { in >> db; } catch (...) { db = nlohmann::json::array(); }
+    }
 
     db.push_back({{"file", path.toStdString()}, {"timestamp", QDateTime::currentSecsSinceEpoch()}});
 
@@ -227,7 +238,7 @@ void MainWindow::showDownloadHistory() {
     nlohmann::json db;
     std::ifstream in("downloads.json");
     if (!in.is_open()) return;
-    in >> db;
+    try { in >> db; } catch (...) { return; }
 
     QStringList options;
     for (const auto &item : db) {
@@ -246,7 +257,7 @@ void MainWindow::showBrowsingHistory() {
     nlohmann::json db;
     std::ifstream in("history.json");
     if (!in.is_open()) return;
-    in >> db;
+    try { in >> db; } catch (...) { return; }
 
     QStringList entries;
     for (const auto &item : db) {
