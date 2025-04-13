@@ -7,8 +7,8 @@ some browser project i made 3 years ago that i today revived
 > so if you break something just an update won't work
 
 
-> [!ErrorFixes]
-- fixed the whole browser by adding downloads.json and history.json because without them the browser doesnt work
+> ErrorFixes
+> - fixed the whole browser by adding downloads.json and history.json because without them the browser doesnt work
 
 ## features
 it has things like
